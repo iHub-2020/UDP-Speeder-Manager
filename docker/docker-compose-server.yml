@@ -46,8 +46,8 @@ services:
       - TZ=${TZ:-Asia/Shanghai}
     
     volumes:
-      - ${CONFIG_DIR:-./data/config}:/app/config
-      - ${LOG_DIR:-./data/logs}:/app/logs
+      - ${CONFIG_DIR:-/opt/udp-speeder/config}:/app/config
+      - ${LOG_DIR:-/opt/udp-speeder/logs}:/app/logs
     
     healthcheck:
       test: ["CMD", "/entrypoint.sh", "health"]
