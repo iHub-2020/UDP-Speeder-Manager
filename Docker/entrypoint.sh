@@ -99,7 +99,7 @@ CMD="$CMD --timeout ${TIMEOUT}"
 [ -n "$EXTRA_ARGS" ] && CMD="$CMD $EXTRA_ARGS"
 
 echo "=========================================="
-echo "UDP-Speeder Docker Container"
+echo "UDP-Speeder Docker-Manager Container"
 echo "=========================================="
 echo "Mode: $MODE"
 echo "Listen: ${LOCAL_ADDR}:${LOCAL_PORT}"
