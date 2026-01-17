@@ -1,12 +1,15 @@
 #!/bin/bash
 # ============================================================================
-# UDPspeeder Docker Entrypoint Script
+# UDP-Speeder-Manager Docker Entrypoint Script
 # ============================================================================
 # Project: UDP-Speeder-Manager
 # Author: iHub-2020
 # Version: v1.1.0
 # Date: 2026-01-16
-# Desc.: Docker 容器启动脚本，支持健康检查和动态用户切换
+# Desc.: Docker Container startup scipt, support health check and change users
+# Changelog:
+#   v1.1.0 - Restructure the project
+#   v1.0.0 - Initial project
 # ============================================================================
 
 set -e
