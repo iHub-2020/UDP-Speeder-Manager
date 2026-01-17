@@ -1,19 +1,20 @@
 # ============================================================================
-# UDPspeeder Docker Compose - Client Configuration
+# UDP-Speeder Docker Compose - Client Configuration
 # ============================================================================
-# 项目: UDPspeeder-Client
-# 版本: v1.2.0
-# 日期: 2026-01-16
-# 描述: 客户端配置 - Host 网络模式
-# 用法: docker-compose -f docker-compose-client.yml --env-file client.env up -d
+# Name: UDP-Speeder-Client
+# Author: iHub-2020
+# Version: v1.2.0
+# Date: 2026-01-16
+# Desc.: Client Configuration - Host Mode
+# v1.2.0: xxxx
 # ============================================================================
 
 version: '3.8'
 
 services:
   speeder-client:
-    image: ghcr.io/ihub-2020/udpspeeder:latest
-    container_name: udpspeeder-client
+    image: ghcr.io/ihub-2020/udp-speeder-manager:latest
+    container_name: udp-speeder-client
     restart: unless-stopped
     network_mode: host
     
