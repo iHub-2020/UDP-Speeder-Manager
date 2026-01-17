@@ -8,7 +8,7 @@
 # Date: 2026-01-17
 # Description: UDP network accelerator with FEC (compiled from official source)
 # Repository: https://github.com/iHub-2020/UDP-Speeder-Manager
-# Upstream: https://github.com/wangyu-/UDPspeeder
+# Upstream: https://github.com/iHub-2020/UDPspeeder
 # ============================================================================
 
 FROM alpine:latest AS builder
