@@ -56,19 +56,22 @@ RUN addgroup -g 1000 speeder && \
     chmod -R 755 /app
 
 # Create entrypoint script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-if [ "$1" = "health" ]; then\n\
-    pgrep speederv2 > /dev/null && exit 0 || exit 1\n\
-fi\n\
-\n\
-if [ "$1" = "server" ]; then\n\
-    exec su-exec speeder /usr/local/bin/speederv2 "$@"\n\
-fi\n\
-\n\
-exec "$@"' > /entrypoint.sh && \
-    chmod +x /entrypoint.sh
+RUN cat > /entrypoint.sh <<'EOF'
+#!/bin/bash
+set -e
+
+if [ "$1" = "health" ]; then
+    pgrep speederv2 > /dev/null && exit 0 || exit 1
+fi
+
+if [ "$1" = "server" ]; then
+    exec su-exec speeder /usr/local/bin/speederv2 "$@"
+fi
+
+exec "$@"
+EOF
+
+RUN chmod +x /entrypoint.sh
 
 WORKDIR /app
 
