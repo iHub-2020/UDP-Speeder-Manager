@@ -1,10 +1,16 @@
 # ============================================================================
-# GitHub Actions Workflow - UDPspeeder Docker Image Build & Push
+# GitHub Actions Workflow - UDP-Speeder-Manager Docker Build & Push
 # ============================================================================
-# 项目: UDPspeeder Docker
-# 版本: v1.0.0
-# 日期: 2026-01-16
-# 描述: 构建并推送 UDPspeeder Docker 镜像到 GitHub Container Registry
+# Project: UDP-Speeder-Manager
+# Author: iHub-2020
+# Version: v2.0.0
+# Date: 2026-01-17
+# Description: Build and push multi-arch Docker images to GitHub Container Registry
+# Repository: https://github.com/iHub-2020/UDP-Speeder-Manager
+# Changelog:
+#   v2.0.0 - Add multi-arch support (amd64, arm64), update to English comments
+#   v1.2.0 - Optimize build process
+#   v1.0.0 - Initial release
 # ============================================================================
 
 name: Build and Push Docker Image
@@ -22,17 +28,20 @@ env:
 
 jobs:
   build-and-push:
-    name: Build Docker Image
+    name: Build Multi-Arch Docker Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     
     steps:
-      - name: 📥 Checkout
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      
+      - name: 🔧 Set up QEMU
+        uses: docker/setup-qemu-action@v3
       
       - name: 🐳 Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -44,7 +53,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: 📝 Extract metadata
+      - name: 📝 Extract Metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -53,13 +62,15 @@ jobs:
             type=ref,event=tag
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
       
-      - name: 🔨 Build and push
+      - name: 🔨 Build and Push Multi-Arch Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -68,3 +79,6 @@ jobs:
           build-args: |
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
+      
+      - name: 📊 Image Digest
+        run: echo "Image pushed with digest ${{ steps.build.outputs.digest }}"
