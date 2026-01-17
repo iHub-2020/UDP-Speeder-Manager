@@ -4,11 +4,12 @@
 # ============================================================================
 # Project: UDP-Speeder-Manager
 # Author: iHub-2020
-# Version: v2.0.0
+# Version: v2.1.0
 # Date: 2026-01-17
 # Description: Docker container startup script with health check and user management
 # Repository: https://github.com/iHub-2020/UDP-Speeder-Manager
 # Changelog:
+#   v2.1.0 - Fix persistent volume, enable default logging
 #   v2.0.0 - Migrate to Alpine, separate basic/advanced parameters
 #   v1.1.0 - Restructure the project
 #   v1.0.0 - Initial release
@@ -31,7 +32,7 @@ setup_user() {
     PGID=${PGID:-1000}
     
     if [ "$PUID" != "0" ] || [ "$PGID" != "0" ]; then
-        echo "Setting up user with PUID=$PUID PGID=$PGID"
+        echo "[INFO] Setting up user with PUID=$PUID PGID=$PGID"
         
         # Create group if not exists
         if ! getent group speeder > /dev/null 2>&1; then
@@ -43,10 +44,13 @@ setup_user() {
             adduser -D -u $PUID -G speeder speeder 2>/dev/null || true
         fi
         
-        # Set permissions for persistent directories
+        # Ensure persistent directories exist with correct permissions
         mkdir -p /app/config /app/logs
         chown -R $PUID:$PGID /app
         chmod -R 755 /app
+        
+        echo "[INFO] Persistent directories initialized"
+        ls -la /app/
     fi
 }
 
@@ -81,7 +85,12 @@ MTU="${MTU:-}"                          # MTU value (default: 1250, don't change
 REPORT="${REPORT:-}"                    # Send/recv report interval (seconds, 0=disabled)
 DISABLE_OBSCURE="${DISABLE_OBSCURE:-0}" # Disable packet obfuscation (1=disable)
 EXTRA_ARGS="${EXTRA_ARGS:-}"            # Additional custom arguments
-LOG_FILE="${LOG_FILE:-}"                # Optional log file path
+
+# ============================================================================
+# Logging Configuration (Default enabled)
+# ============================================================================
+LOG_FILE="${LOG_FILE:-/app/logs/speeder.log}"  # Default log file path
+ENABLE_STDOUT="${ENABLE_STDOUT:-1}"            # Also output to stdout (1=yes, 0=no)
 
 # ============================================================================
 # Build Command
@@ -94,7 +103,7 @@ if [ "$MODE" = "server" ] || [ "$MODE" = "-s" ]; then
 elif [ "$MODE" = "client" ] || [ "$MODE" = "-c" ]; then
     CMD="$CMD -c"
 else
-    echo "Error: MODE must be 'server' or 'client'"
+    echo "[ERROR] MODE must be 'server' or 'client'"
     exit 1
 fi
 
@@ -131,24 +140,31 @@ echo "Timeout: ${TIMEOUT}ms"
 [ -n "$INTERVAL" ] && echo "Interval: ${INTERVAL}ms"
 [ -n "$JITTER" ] && echo "Jitter: ${JITTER}ms"
 [ -n "$REPORT" ] && [ "$REPORT" != "0" ] && echo "Report: ${REPORT}s"
+echo "Log File: ${LOG_FILE}"
 echo "=========================================="
 echo "Starting: $CMD"
 echo "=========================================="
 
 # ============================================================================
-# Execute with optional logging
+# Execute with logging
 # ============================================================================
-if [ -n "$LOG_FILE" ]; then
-    echo "Logging to: $LOG_FILE"
-    if [ "${PUID:-1000}" != "0" ]; then
+# Ensure log file directory exists
+mkdir -p "$(dirname "$LOG_FILE")"
+touch "$LOG_FILE"
+chown ${PUID:-1000}:${PGID:-1000} "$LOG_FILE" 2>/dev/null || true
+
+if [ "${PUID:-1000}" != "0" ]; then
+    if [ "$ENABLE_STDOUT" = "1" ]; then
+        # Output to both file and stdout
         exec su-exec speeder sh -c "$CMD 2>&1 | tee -a $LOG_FILE"
     else
-        exec sh -c "$CMD 2>&1 | tee -a $LOG_FILE"
+        # Output to file only
+        exec su-exec speeder sh -c "$CMD >> $LOG_FILE 2>&1"
     fi
 else
-    if [ "${PUID:-1000}" != "0" ]; then
-        exec su-exec speeder $CMD
+    if [ "$ENABLE_STDOUT" = "1" ]; then
+        exec sh -c "$CMD 2>&1 | tee -a $LOG_FILE"
     else
-        exec $CMD
+        exec sh -c "$CMD >> $LOG_FILE 2>&1"
     fi
 fi
