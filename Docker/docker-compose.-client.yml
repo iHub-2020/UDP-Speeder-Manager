@@ -1,0 +1,68 @@
+# ============================================================================
+# UDPspeeder Docker Compose - Client Configuration
+# ============================================================================
+# 项目: UDPspeeder-Client
+# 版本: v1.2.0
+# 日期: 2026-01-16
+# 描述: 客户端配置 - Host 网络模式
+# 用法: docker-compose -f docker-compose-client.yml --env-file client.env up -d
+# ============================================================================
+
+version: '3.8'
+
+services:
+  speeder-client:
+    image: ghcr.io/ihub-2020/udpspeeder:latest
+    container_name: udpspeeder-client
+    restart: unless-stopped
+    network_mode: host
+    
+    environment:
+      # 运行模式
+      - MODE=${MODE:-client}
+      
+      # 用户权限
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - UMASK=${UMASK:-022}
+      
+      # 网络配置
+      - LOCAL_ADDR=${LOCAL_ADDR:-0.0.0.0}
+      - LOCAL_PORT=${LOCAL_PORT:-3333}
+      - REMOTE_ADDR=${REMOTE_ADDR}
+      - REMOTE_PORT=${REMOTE_PORT:-29900}
+      
+      # FEC 配置
+      - FEC_PARAMS=${FEC_PARAMS:-20:10}
+      - PASSWORD=${PASSWORD:-passwd}
+      - WORK_MODE=${WORK_MODE:-0}
+      - TIMEOUT=${TIMEOUT:-8}
+      
+      # 高级参数
+      - MTU=${MTU:-1250}
+      - QUEUE_LEN=${QUEUE_LEN:-200}
+      - INTERVAL=${INTERVAL:-0}
+      - JITTER=${JITTER:-0}
+      - REPORT=${REPORT:-10}
+      - DISABLE_OBSCURE=${DISABLE_OBSCURE:-0}
+      - EXTRA_ARGS=${EXTRA_ARGS:-}
+      
+      # 系统配置
+      - TZ=${TZ:-Asia/Shanghai}
+    
+    volumes:
+      - ${CONFIG_DIR:-./config}:/app/config
+      - ${LOG_DIR:-./logs}:/app/logs
+    
+    healthcheck:
+      test: ["CMD", "/entrypoint.sh", "health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
