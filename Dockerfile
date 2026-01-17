@@ -1,34 +1,31 @@
 # ============================================================================
-# UDP-Speeder Docker Image
+# UDP-Speeder-Manager Docker Image
 # ============================================================================
-# 项目: UDP-Speeder-Manager
-# 版本: v2.1
-# 基础镜像: Debian 12 (Bookworm)
-# 日期: 2026-01-16
-# 描述: 双边网络加速工具，通过 FEC 技术对抗丢包
+# Project: UDP-Speeder-Manager
+# Version: v2.1
+# Base Image: Alpine Linux
+# Date: 2026-01-17
+# Description: UDP network accelerator with Forward Error Correction (FEC)
+# Repository: https://github.com/iHub-2020/UDP-Speeder-Manager
 # ============================================================================
 
-FROM debian:12-slim AS builder
+FROM alpine:latest AS builder
 
-LABEL maintainer="UDP-Speeder-Manager Project"
+LABEL maintainer="iHub-2020"
 LABEL description="UDP network accelerator with FEC"
 
 ARG BUILD_DATE
 ARG VCS_REF
 
-# 安装编译依赖
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    g++ \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+# Install build dependencies
+RUN apk add --no-cache build-base git
 
 WORKDIR /build
 
-# 复制源码
+# Copy source code
 COPY . .
 
-# 生成版本信息并编译 (参考makefile: all target)
+# Generate version info and compile (static binary)
 RUN echo "const char *gitversion = \"${VCS_REF:-unknown}\";" > git_version.h && \
     g++ -std=c++11 -Wall -Wextra -Wno-unused-variable \
         -Wno-unused-parameter -Wno-missing-field-initializers \
@@ -36,38 +33,35 @@ RUN echo "const char *gitversion = \"${VCS_REF:-unknown}\";" > git_version.h && 
         main.cpp log.cpp common.cpp lib/fec.cpp lib/rs.cpp \
         crc32/Crc32.cpp packet.cpp delay_manager.cpp fd_manager.cpp \
         connection.cpp fec_manager.cpp misc.cpp tunnel_client.cpp \
-        tunnel_server.cpp my_ev.cpp -isystem libev -lrt
+        tunnel_server.cpp my_ev.cpp -lrt
 
 # ============================================================================
-# 运行时镜像
+# Runtime Image
 # ============================================================================
-FROM debian:12-slim
+FROM alpine:latest
 
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.revision="${VCS_REF}"
-LABEL org.opencontainers.image.title="UDP-Speeder"
+LABEL org.opencontainers.image.title="UDP-Speeder-Manager"
 LABEL org.opencontainers.image.description="UDP network accelerator with FEC"
 
-# 安装运行时依赖
-RUN apt-get update && apt-get install -y \
-    procps \
-    gosu \
-    && rm -rf /var/lib/apt/lists/*
+# Install runtime dependencies (su-exec for user switching)
+RUN apk add --no-cache su-exec bash
 
-# 创建用户 (UID/GID=1000)
-RUN groupadd -g 1000 speeder && \
-    useradd -u 1000 -g 1000 -m -s /bin/bash speeder
+# Create user (UID/GID=1000)
+RUN addgroup -g 1000 speeder && \
+    adduser -D -u 1000 -G speeder -s /bin/bash speeder
 
-# 复制二进制文件和脚本
+# Copy binary and entrypoint script
 COPY --from=builder /build/speederv2 /usr/local/bin/
 COPY docker/entrypoint.sh /entrypoint.sh
 
-# 设置权限
+# Set permissions
 RUN chmod +x /usr/local/bin/speederv2 /entrypoint.sh && \
     mkdir -p /app/config /app/logs && \
     chown -R 1000:1000 /app
 
-# 暴露端口 (默认4096，>1024无需特殊权限)
+# Expose default port
 EXPOSE 29900/udp
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
