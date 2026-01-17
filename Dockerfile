@@ -2,6 +2,7 @@
 # UDP-Speeder-Manager Docker Image
 # ============================================================================
 # Project: UDP-Speeder-Manager
+# Author: iHub-2020
 # Version: v2.1
 # Base Image: Alpine Linux
 # Date: 2026-01-17
@@ -45,8 +46,8 @@ LABEL org.opencontainers.image.revision="${VCS_REF}"
 LABEL org.opencontainers.image.title="UDP-Speeder-Manager"
 LABEL org.opencontainers.image.description="UDP network accelerator with FEC"
 
-# Install runtime dependencies (su-exec for user switching)
-RUN apk add --no-cache su-exec bash
+# Install runtime dependencies
+RUN apk add --no-cache su-exec bash coreutils
 
 # Create user (UID/GID=1000)
 RUN addgroup -g 1000 speeder && \
@@ -56,13 +57,22 @@ RUN addgroup -g 1000 speeder && \
 COPY --from=builder /build/speederv2 /usr/local/bin/
 COPY docker/entrypoint.sh /entrypoint.sh
 
-# Set permissions
+# Create persistent directories with correct ownership
 RUN chmod +x /usr/local/bin/speederv2 /entrypoint.sh && \
     mkdir -p /app/config /app/logs && \
-    chown -R 1000:1000 /app
+    touch /app/logs/.keep && \
+    echo "# UDP-Speeder-Manager config directory" > /app/config/README.txt && \
+    chown -R 1000:1000 /app && \
+    chmod -R 755 /app
+
+# Set working directory
+WORKDIR /app
 
 # Expose default port
 EXPOSE 29900/udp
+
+# Volume for persistent data
+VOLUME ["/app/config", "/app/logs"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD /entrypoint.sh health
