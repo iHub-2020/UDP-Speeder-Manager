@@ -3,16 +3,15 @@
 # ============================================================================
 # Project: UDP-Speeder-Manager
 # Author: iHub-2020
-# Version: v2.2.0
+# Version: v2.2.1
 # Base Image: Alpine Linux
 # Date: 2026-01-17
 # Description: UDP network accelerator with Forward Error Correction (FEC)
 # Repository: https://github.com/iHub-2020/UDP-Speeder-Manager
 # Upstream: https://github.com/iHub-2020/UDPspeeder
 # Changelog:
-#   v2.2.0 - Fix build: use precompiled binary from official release
-#   v2.1.0 - Add persistent volume support
-#   v2.0.0 - Migrate to Alpine Linux
+#   v2.2.1 - Fix binary filename mapping (aarch64 -> aarch64, not arm)
+#   v2.2.0 - Use precompiled binary from official release
 # ============================================================================
 
 FROM alpine:latest
@@ -22,7 +21,7 @@ LABEL maintainer="iHub-2020" \
       org.opencontainers.image.title="UDP-Speeder-Manager" \
       org.opencontainers.image.description="UDP network accelerator with FEC"
 
-ARG SPEEDER_VERSION=20230206.0
+ARG SPEEDER_VERSION=1.0.0
 ARG BUILD_DATE
 ARG VCS_REF
 
@@ -37,10 +36,10 @@ RUN apk add --no-cache su-exec bash curl ca-certificates
 RUN ARCH=$(uname -m) && \
     case ${ARCH} in \
         x86_64) BINARY_ARCH="x86_64" ;; \
-        aarch64) BINARY_ARCH="arm" ;; \
+        aarch64) BINARY_ARCH="aarch64" ;; \
         *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
     esac && \
-    curl -fsSL "https://github.com/iHub-2020/UDPspeeder/releases/download/${SPEEDER_VERSION}/speederv2_binaries.tar.gz" -o /tmp/speeder.tar.gz && \
+    curl -fsSL "https://github.com/iHub-2020/UDPspeeder/releases/download/v${SPEEDER_VERSION}/speederv2_binaries.tar.gz" -o /tmp/speeder.tar.gz && \
     tar -xzf /tmp/speeder.tar.gz -C /tmp && \
     mv /tmp/speederv2_${BINARY_ARCH} /usr/local/bin/speederv2 && \
     chmod +x /usr/local/bin/speederv2 && \
@@ -59,16 +58,12 @@ RUN addgroup -g 1000 speeder && \
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Set working directory
 WORKDIR /app
 
-# Expose default port
 EXPOSE 29900/udp
 
-# Volume for persistent data
 VOLUME ["/app/config", "/app/logs"]
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD /entrypoint.sh health
 
