@@ -39,7 +39,7 @@ RUN ARCH=$(uname -m) && \
         aarch64) BINARY_ARCH="aarch64" ;; \
         *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
     esac && \
-    curl -fsSL "https://github.com/iHub-2020/UDPspeeder/releases/download/v${SPEEDER_VERSION}/speederv2_binaries.tar.gz" -o /tmp/speeder.tar.gz && \
+    curl -fsSL "https://github.com/iHub-2020/UDPspeeder/releases/download/${SPEEDER_VERSION}/speederv2_binaries.tar.gz" -o /tmp/speeder.tar.gz && \
     tar -xzf /tmp/speeder.tar.gz -C /tmp && \
     mv /tmp/speederv2_${BINARY_ARCH} /usr/local/bin/speederv2 && \
     chmod +x /usr/local/bin/speederv2 && \
