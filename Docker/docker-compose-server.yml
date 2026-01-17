@@ -1,11 +1,12 @@
 # ============================================================================
-# UDPspeeder Docker Compose - Server Configuration
+# UDP-Speeder Docker Compose - Server Configuration
 # ============================================================================
-# 项目: UDPspeeder-Server
-# 版本: v1.2.0
-# 日期: 2026-01-16
-# 描述: 服务端配置 - Host 网络模式
-# 用法: docker-compose -f docker-compose-server.yml --env-file server.env up -d
+# Name: UDP-Speeder-Server
+# Author: iHub-2020
+# Version: v1.2.0
+# Date: 2026-01-16
+# Desc.: 服务端配置 - Host 网络模式
+# v1.2.0: xxxx
 # ============================================================================
 
 version: '3.8'
@@ -13,7 +14,7 @@ version: '3.8'
 services:
   speeder-server:
     image: ghcr.io/ihub-2020/udpspeeder:latest
-    container_name: udpspeeder-server
+    container_name: udp-speeder-server
     restart: unless-stopped
     network_mode: host
     
