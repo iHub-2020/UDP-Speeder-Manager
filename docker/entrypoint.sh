@@ -1,170 +1,76 @@
-#!/bin/bash
 # ============================================================================
-# UDP-Speeder-Manager Docker Entrypoint Script
+# UDP-Speeder-Manager Docker Image (Build from Source)
 # ============================================================================
 # Project: UDP-Speeder-Manager
 # Author: iHub-2020
-# Version: v2.1.0
+# Version: v2.2.0
+# Base Image: Alpine Linux
 # Date: 2026-01-17
-# Description: Docker container startup script with health check and user management
+# Description: UDP network accelerator with FEC (compiled from official source)
 # Repository: https://github.com/iHub-2020/UDP-Speeder-Manager
-# Changelog:
-#   v2.1.0 - Fix persistent volume, enable default logging
-#   v2.0.0 - Migrate to Alpine, separate basic/advanced parameters
-#   v1.1.0 - Restructure the project
-#   v1.0.0 - Initial release
+# Upstream: https://github.com/wangyu-/UDPspeeder
 # ============================================================================
 
-set -e
+FROM alpine:latest AS builder
 
-# Health check function
-health_check() {
-    if pgrep -x speederv2 > /dev/null 2>&1; then
-        exit 0
-    else
-        exit 1
-    fi
-}
+ARG SPEEDER_VERSION=20230206.0
 
-# Setup user with PUID/PGID
-setup_user() {
-    PUID=${PUID:-1000}
-    PGID=${PGID:-1000}
-    
-    if [ "$PUID" != "0" ] || [ "$PGID" != "0" ]; then
-        echo "[INFO] Setting up user with PUID=$PUID PGID=$PGID"
-        
-        # Create group if not exists
-        if ! getent group speeder > /dev/null 2>&1; then
-            addgroup -g $PGID speeder 2>/dev/null || true
-        fi
-        
-        # Create user if not exists
-        if ! getent passwd speeder > /dev/null 2>&1; then
-            adduser -D -u $PUID -G speeder speeder 2>/dev/null || true
-        fi
-        
-        # Ensure persistent directories exist with correct permissions
-        mkdir -p /app/config /app/logs
-        chown -R $PUID:$PGID /app
-        chmod -R 755 /app
-        
-        echo "[INFO] Persistent directories initialized"
-        ls -la /app/
-    fi
-}
+# Install build dependencies
+RUN apk add --no-cache build-base git linux-headers
 
-# Handle health check call
-if [ "$1" = "health" ]; then
-    health_check
-fi
+WORKDIR /build
 
-# Setup user
-setup_user
+# Clone official UDPspeeder repository
+RUN git clone --depth 1 --branch ${SPEEDER_VERSION} \
+    https://github.com/wangyu-/UDPspeeder.git . || \
+    git clone --depth 1 https://github.com/wangyu-/UDPspeeder.git .
+
+# Compile static binary
+RUN make -j$(nproc) && \
+    strip speederv2_amd64 || strip speederv2_* || true
 
 # ============================================================================
-# Basic Parameters (Required for normal usage)
+# Runtime Image
 # ============================================================================
-MODE="${MODE:-server}"                  # Mode: server or client
-LOCAL_ADDR="${LOCAL_ADDR:-0.0.0.0}"     # Local listen address
-LOCAL_PORT="${LOCAL_PORT:-29900}"       # Local listen port
-REMOTE_ADDR="${REMOTE_ADDR:-127.0.0.1}" # Remote target address
-REMOTE_PORT="${REMOTE_PORT:-7777}"      # Remote target port
-FEC_PARAMS="${FEC_PARAMS:-20:10}"       # FEC ratio (x:y = send y redundant for every x packets)
-PASSWORD="${PASSWORD:-passwd}"          # XOR encryption key
-WORK_MODE="${WORK_MODE:-0}"             # FEC mode: 0 (default, no MTU issue) or 1 (lower latency)
-TIMEOUT="${TIMEOUT:-8}"                 # FEC encoding timeout (ms)
+FROM alpine:latest
 
-# ============================================================================
-# Advanced Parameters (Optional, for fine-tuning)
-# ============================================================================
-QUEUE_LEN="${QUEUE_LEN:-}"              # FEC queue length (mode 0 only, default: 200)
-INTERVAL="${INTERVAL:-}"                # Scatter packets interval to protect burst loss (ms)
-JITTER="${JITTER:-}"                    # Simulated jitter (ms, default: 0)
-MTU="${MTU:-}"                          # MTU value (default: 1250, don't change unless necessary)
-REPORT="${REPORT:-}"                    # Send/recv report interval (seconds, 0=disabled)
-DISABLE_OBSCURE="${DISABLE_OBSCURE:-0}" # Disable packet obfuscation (1=disable)
-EXTRA_ARGS="${EXTRA_ARGS:-}"            # Additional custom arguments
+ARG BUILD_DATE
+ARG VCS_REF
 
-# ============================================================================
-# Logging Configuration (Default enabled)
-# ============================================================================
-LOG_FILE="${LOG_FILE:-/app/logs/speeder.log}"  # Default log file path
-ENABLE_STDOUT="${ENABLE_STDOUT:-1}"            # Also output to stdout (1=yes, 0=no)
+LABEL maintainer="iHub-2020" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.title="UDP-Speeder-Manager" \
+      org.opencontainers.image.description="UDP network accelerator with FEC"
 
-# ============================================================================
-# Build Command
-# ============================================================================
-CMD="/usr/local/bin/speederv2"
+# Install runtime dependencies
+RUN apk add --no-cache su-exec bash
 
-# Set mode
-if [ "$MODE" = "server" ] || [ "$MODE" = "-s" ]; then
-    CMD="$CMD -s"
-elif [ "$MODE" = "client" ] || [ "$MODE" = "-c" ]; then
-    CMD="$CMD -c"
-else
-    echo "[ERROR] MODE must be 'server' or 'client'"
-    exit 1
-fi
+# Copy binary from builder
+COPY --from=builder /build/speederv2_* /usr/local/bin/speederv2
 
-# Basic parameters (always included)
-CMD="$CMD -l${LOCAL_ADDR}:${LOCAL_PORT}"
-CMD="$CMD -r${REMOTE_ADDR}:${REMOTE_PORT}"
-CMD="$CMD -f${FEC_PARAMS}"
-CMD="$CMD -k\"${PASSWORD}\""
-CMD="$CMD --mode ${WORK_MODE}"
-CMD="$CMD --timeout ${TIMEOUT}"
+# Create user and directories
+RUN chmod +x /usr/local/bin/speederv2 && \
+    addgroup -g 1000 speeder && \
+    adduser -D -u 1000 -G speeder -s /bin/bash speeder && \
+    mkdir -p /app/config /app/logs && \
+    touch /app/logs/.keep && \
+    echo "# UDP-Speeder config directory" > /app/config/README.txt && \
+    chown -R 1000:1000 /app && \
+    chmod -R 755 /app
 
-# Advanced parameters (only add if set)
-[ -n "$MTU" ] && CMD="$CMD --mtu ${MTU}"
-[ -n "$QUEUE_LEN" ] && CMD="$CMD -q${QUEUE_LEN}"
-[ -n "$INTERVAL" ] && CMD="$CMD -i${INTERVAL}"
-[ -n "$JITTER" ] && CMD="$CMD -j${JITTER}"
-[ -n "$REPORT" ] && [ "$REPORT" != "0" ] && CMD="$CMD --report ${REPORT}"
-[ "$DISABLE_OBSCURE" = "1" ] && CMD="$CMD --disable-obscure"
-[ -n "$EXTRA_ARGS" ] && CMD="$CMD $EXTRA_ARGS"
+# Copy entrypoint script
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# ============================================================================
-# Display Configuration
-# ============================================================================
-echo "=========================================="
-echo "UDP-Speeder-Manager Container"
-echo "=========================================="
-echo "Mode: $MODE"
-echo "Listen: ${LOCAL_ADDR}:${LOCAL_PORT}"
-echo "Remote: ${REMOTE_ADDR}:${REMOTE_PORT}"
-echo "FEC: ${FEC_PARAMS}"
-echo "Work Mode: ${WORK_MODE}"
-echo "Timeout: ${TIMEOUT}ms"
-[ -n "$QUEUE_LEN" ] && echo "Queue Len: ${QUEUE_LEN}"
-[ -n "$INTERVAL" ] && echo "Interval: ${INTERVAL}ms"
-[ -n "$JITTER" ] && echo "Jitter: ${JITTER}ms"
-[ -n "$REPORT" ] && [ "$REPORT" != "0" ] && echo "Report: ${REPORT}s"
-echo "Log File: ${LOG_FILE}"
-echo "=========================================="
-echo "Starting: $CMD"
-echo "=========================================="
+WORKDIR /app
 
-# ============================================================================
-# Execute with logging
-# ============================================================================
-# Ensure log file directory exists
-mkdir -p "$(dirname "$LOG_FILE")"
-touch "$LOG_FILE"
-chown ${PUID:-1000}:${PGID:-1000} "$LOG_FILE" 2>/dev/null || true
+EXPOSE 29900/udp
 
-if [ "${PUID:-1000}" != "0" ]; then
-    if [ "$ENABLE_STDOUT" = "1" ]; then
-        # Output to both file and stdout
-        exec su-exec speeder sh -c "$CMD 2>&1 | tee -a $LOG_FILE"
-    else
-        # Output to file only
-        exec su-exec speeder sh -c "$CMD >> $LOG_FILE 2>&1"
-    fi
-else
-    if [ "$ENABLE_STDOUT" = "1" ]; then
-        exec sh -c "$CMD 2>&1 | tee -a $LOG_FILE"
-    else
-        exec sh -c "$CMD >> $LOG_FILE 2>&1"
-    fi
-fi
+VOLUME ["/app/config", "/app/logs"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD /entrypoint.sh health
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["server"]
