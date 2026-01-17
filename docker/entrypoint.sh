@@ -19,7 +19,7 @@ set -e
 
 # Health check function
 health_check() {
-    if pgrep -x speederv2 > /dev/null 2>&1; then
+    if pgrep speederv2 > /dev/null 2>&1; then
         exit 0
     else
         exit 1
