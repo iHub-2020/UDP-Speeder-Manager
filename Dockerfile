@@ -3,13 +3,14 @@
 # ============================================================================
 # Project: UDP-Speeder-Manager
 # Author: iHub-2020
-# Version: v2.2.1
+# Version: v2.2.2
 # Base Image: Alpine Linux
 # Date: 2026-01-17
 # Description: UDP network accelerator with Forward Error Correction (FEC)
 # Repository: https://github.com/iHub-2020/UDP-Speeder-Manager
 # Upstream: https://github.com/iHub-2020/UDPspeeder
 # Changelog:
+#   v2.2.2 - Update to UDPspeeder v1.0.1, fix entrypoint dependency
 #   v2.2.1 - Fix binary filename mapping (aarch64 -> aarch64, not arm)
 #   v2.2.0 - Use precompiled binary from official release
 # ============================================================================
@@ -21,7 +22,7 @@ LABEL maintainer="iHub-2020" \
       org.opencontainers.image.title="UDP-Speeder-Manager" \
       org.opencontainers.image.description="UDP network accelerator with FEC"
 
-ARG SPEEDER_VERSION=1.0.0
+ARG SPEEDER_VERSION=1.0.1
 ARG BUILD_DATE
 ARG VCS_REF
 
@@ -54,9 +55,20 @@ RUN addgroup -g 1000 speeder && \
     chown -R 1000:1000 /app && \
     chmod -R 755 /app
 
-# Copy entrypoint script
-COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Create entrypoint script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+if [ "$1" = "health" ]; then\n\
+    pgrep speederv2 > /dev/null && exit 0 || exit 1\n\
+fi\n\
+\n\
+if [ "$1" = "server" ]; then\n\
+    exec su-exec speeder /usr/local/bin/speederv2 "$@"\n\
+fi\n\
+\n\
+exec "$@"' > /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
 WORKDIR /app
 
