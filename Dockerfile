@@ -1,13 +1,13 @@
 # ============================================================================
-# UDP-Speeder-Manager Docker Image
+# docker-app-udpspeeder Docker Image
 # ============================================================================
-# Project: UDP-Speeder-Manager
+# Project: docker-app-udpspeeder
 # Author: iHub-2020
 # Version: v2.2.3
 # Base Image: Alpine Linux
 # Date: 2026-01-17
 # Description: UDP network accelerator with Forward Error Correction (FEC)
-# Repository: https://github.com/iHub-2020/UDP-Speeder-Manager
+# Repository: https://github.com/iHub-2020/docker-app-udpspeeder
 # Upstream: https://github.com/iHub-2020/UDPspeeder
 # Changelog:
 #   v2.2.3 - Fix entrypoint.sh: use COPY instead of inline creation
@@ -20,7 +20,7 @@ FROM alpine:latest
 
 LABEL maintainer="iHub-2020" \
       description="UDP network accelerator with FEC" \
-      org.opencontainers.image.title="UDP-Speeder-Manager" \
+      org.opencontainers.image.title="docker-app-udpspeeder" \
       org.opencontainers.image.description="UDP network accelerator with FEC"
 
 ARG SPEEDER_VERSION=1.0.1
@@ -52,7 +52,7 @@ RUN addgroup -g 1000 speeder && \
     adduser -D -u 1000 -G speeder -s /bin/bash speeder && \
     mkdir -p /app/config /app/logs && \
     touch /app/logs/.keep && \
-    echo "# UDP-Speeder-Manager config directory" > /app/config/README.txt && \
+    echo "# docker-app-udpspeeder config directory" > /app/config/README.txt && \
     chown -R 1000:1000 /app && \
     chmod -R 755 /app
 

@@ -1,13 +1,13 @@
 #!/bin/bash
 # ============================================================================
-# UDP-Speeder-Manager Docker Entrypoint Script
+# docker-app-udpspeeder Docker Entrypoint Script
 # ============================================================================
-# Project: UDP-Speeder-Manager
+# Project: docker-app-udpspeeder
 # Author: iHub-2020
 # Version: v2.1.0
 # Date: 2026-01-17
 # Description: Docker container startup script with health check and user management
-# Repository: https://github.com/iHub-2020/UDP-Speeder-Manager
+# Repository: https://github.com/iHub-2020/docker-app-udpspeeder
 # Changelog:
 #   v2.1.0 - Fix persistent volume, enable default logging
 #   v2.0.0 - Migrate to Alpine, separate basic/advanced parameters
@@ -30,25 +30,25 @@ health_check() {
 setup_user() {
     PUID=${PUID:-1000}
     PGID=${PGID:-1000}
-    
+
     if [ "$PUID" != "0" ] || [ "$PGID" != "0" ]; then
         echo "[INFO] Setting up user with PUID=$PUID PGID=$PGID"
-        
+
         # Create group if not exists
         if ! getent group speeder > /dev/null 2>&1; then
             addgroup -g $PGID speeder 2>/dev/null || true
         fi
-        
+
         # Create user if not exists
         if ! getent passwd speeder > /dev/null 2>&1; then
             adduser -D -u $PUID -G speeder speeder 2>/dev/null || true
         fi
-        
+
         # Ensure persistent directories exist with correct permissions
         mkdir -p /app/config /app/logs
         chown -R $PUID:$PGID /app
         chmod -R 755 /app
-        
+
         echo "[INFO] Persistent directories initialized"
         ls -la /app/
     fi
@@ -128,7 +128,7 @@ CMD="$CMD --timeout ${TIMEOUT}"
 # Display Configuration
 # ============================================================================
 echo "=========================================="
-echo "UDP-Speeder-Manager Container"
+echo "docker-app-udpspeeder Container"
 echo "=========================================="
 echo "Mode: $MODE"
 echo "Listen: ${LOCAL_ADDR}:${LOCAL_PORT}"
